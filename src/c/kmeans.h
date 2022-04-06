@@ -1,6 +1,159 @@
 //
 // Created by ram on 04/04/2022.
 //
+#include <stdio.h>
+#include<malloc.h>
+#include<math.h>
+#include <stdlib.h>
+#include <string.h>
+
+int is_converged(double *centroids, double *oldcentroids, int K, int veclength) {
+    int i = 0,
+            c = 0,
+            j = 0;
+    double norm = 0;
+    for (i = 0; i < K; i++) {
+        norm = 0;
+        for (j = 0; j < veclength; j++) {
+            norm += pow(centroids[i * veclength + j] - oldcentroids[i * veclength + j], 2);
+        }
+        norm = pow(norm, 0.5);
+        if (norm < 0.001) {
+            c++;
+        }
+    }
+    if (c == K) {
+        return 0;
+    }
+    return 1;
+}
+
+int closest_cluster_index(double *x, double *centroids, int K, int veclength) {
+    double min = 0,
+           sum;
+    int j = 0,
+        i = 0,
+        index = 0;
+    for (i = 0; i < veclength; i++) {
+        min += pow(x[i] - centroids[i], 2);
+    }
+    for (j = 1; j < K; j++) {
+        sum = 0;
+        for (i = 0; i < veclength; i++) {
+            sum += pow(x[i] - centroids[j * veclength + i], 2);
+        }
+        if (sum < min) {
+            min = sum;
+            index = j;
+        }
+    }
+    return index;
+}
+
+int main(int argc, char **argv) {
+    FILE *ifp, *ofp;
+    double vec = 0;
+    char c;
+    int filelength = 0,
+        veclength = 0,
+        iteration_num = 0,
+        valid = 1,
+        i = 0,
+        j = 0,
+        maxiter,
+        K,
+        digit_num,
+        counter,
+    double *vectors,
+           **filearr,
+           *centroids,
+           *oldcentroids,
+           *clusters;
+    int *sizeofclusters;
+    while ((c = fgetc(ifp)) != EOF) {
+        if (c == '\n') {
+            filelength++;
+            veclength++;
+        }
+        if (c == ',') {
+            veclength++;
+        }
+    }
+    veclength = veclength / filelength;
+    vectors = calloc(veclength * filelength, sizeof(double));
+    filearr = calloc(filelength, sizeof(double *));
+    centroids = calloc(K * veclength, sizeof(double));
+    oldcentroids = calloc(K * veclength, sizeof(double));
+    clusters = calloc(K * veclength, sizeof(double));
+    sizeofclusters = calloc(K, sizeof(int));
+    rewind(ifp);
+    while (fscanf(ifp, "%lf,", &vec) != EOF) {
+        vectors[i] = vec;
+        i++;
+    }
+    for (i = 0; i < filelength; i++) {
+        filearr[i] = calloc(veclength, sizeof(double));
+    }
+    for (i = 0; i < filelength; i++) {
+        for (j = 0; j < veclength; j++) {
+            filearr[i][j] = vectors[i * veclength + j];
+        }
+    }
+    for (i = 0; i < veclength * K; i++) {
+        centroids[i] = vectors[i];
+    }
+    iteration_num = 0;
+    valid = 1;
+    while (iteration_num < maxiter && valid == 1) {
+        for (i = 0; i < K * veclength; i++) {
+            oldcentroids[i] = centroids[i];
+        }
+        for (i = 0; i < filelength; i++) {
+            int index = closest_cluster_index(filearr[i], centroids, K, veclength);
+            for (j = 0; j < veclength; j++) {
+                clusters[index * veclength + j] += filearr[i][j];
+            }
+            sizeofclusters[index]++;
+        }
+        for (j = 0; j < K; j++) {
+            for (i = 0; i < veclength; i++) {
+                centroids[veclength * j + i] = clusters[veclength * j + i] / sizeofclusters[j];
+            }
+        }
+        for (j = 0; j < K * veclength; j++) {
+            clusters[j] = 0;
+        }
+        for (j = 0; j < K; j++) {
+            sizeofclusters[j] = 0;
+        }
+        valid = is_converged(centroids, oldcentroids, K, veclength);
+        iteration_num++;
+    }
+    for (i = 0; i < K; i++) {
+        for (j = 0; j < veclength; j++) {
+            fprintf(ofp, "%.4f", centroids[i * veclength + j]);
+            if (j < veclength - 1) {
+                fprintf(ofp, ",");
+            } else {
+                fprintf(ofp, "\n");
+            }
+        }
+    }
+    digit_num=0;
+    counter=0 ;
+    free(clusters);
+    free(sizeofclusters);
+    free(centroids);
+    free(oldcentroids);
+    free(vectors);
+    for (i = 0; i < filelength; i++) {
+        free(filearr[i]);
+    }
+    free(filearr);
+    fclose(ifp);
+    fclose(ofp);
+    return 0;
+}
 typedef enum {false, true} bool;
 
 #ifndef HW1__KMEANS_H_
