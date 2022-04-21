@@ -60,18 +60,19 @@ int* calculate_d_n(kmeans *km, int *dn);
 /*  memory allocation and free */
 void allocate(long **arr, int n);
 void allocate2d(double *** mat, int rows, int cols);
-void free2d(double** mat,int rows){
+void free2d(double***mat,int rows){
   int i;
   for(i = 0; i < rows; ++i) {
-    free(mat[i]);
+    free((*mat)[i]);
   }
-  free(*mat);
+  free(**mat);
 }
 void freeAll(kmeans* km){
   /* assumes kmeans object is initialized. */
-  free2d(km->centroids,km->k);
-  free2d(km->old_centroids,km->k);
-  free2d(km->data_points, km->n);
+  free2d(&km->centroids,km->k);
+  free2d(&km->old_centroids,km->k);
+  free2d(&km->data_points, km->n);
+  free2d(&km->clusters, km->k);
   free(km->sizeof_clusters);
   free(km);
 }
@@ -84,7 +85,8 @@ void freeAll(kmeans* km){
  */
 void initialize_data_points(kmeans *km);
 void initialize_centroids(kmeans *km);
-
+void empty_clusters(kmeans *km);
+void save_old_centroids(kmeans *km);
 /* calculations */
 /**
  * Calculates the squared Euclidian distance between the two input vectors.
@@ -101,47 +103,38 @@ long find_closest_cluster_to(double *data_point, kmeans* km){
  * using variance minimization.
  * @return the index of the closest cluster
  */
-   double min = 0,sum;
-   int i, j;
-   long index = 0;
-   for (i = 0; i < km->d; i++) {
-     min += pow((data_point[i]) - km->centroids[0][i], 2);
-   }
-   for (j = 1; j < km->k; j++) {
-     sum = 0;
-     for (i = 0; i < km->d; i++) {
-       sum += pow(data_point[i] - km->centroids[j][i], 2);
-     }
-     if (sum < min) {
-       min = sum;
-       index = j;
-     }
-   }
-   return index;
+  double min = 0,sum;
+  int i, j;
+  long index = 0;
+  for (i = 0; i < km->d; ++i) {
+    min += pow((data_point[i]) - km->centroids[0][i], 2);
+  }
+  for (i = 1; i < km->k; ++i) {
+    sum = 0;
+    for (j = 0; j < km->d; j++) {
+      sum += pow(data_point[j] - km->centroids[i][j], 2);
+    }
+    if (sum < min) {
+      min = sum;
+      index = i;
+    }
+  }
+  return index;
 }
 void assign_to_clusters(kmeans* km) {
 /**
  * updates the clusters array with the matched data points.
  * @return nothing
  */
-  int iteration_num = 0;
   int i, j;
-  int valid = 1;
-  while (iteration_num < km->max_iter && valid == 1) {
-    // initialize old_centroids
-    for (i = 0; i < km->k ; i++) {
-      for(j = 0; j < km->d; j++)
-      km->old_centroids[i][j] = km->centroids[i][j];
+  /* initialize clusters */
+  empty_clusters(km);
+  for (i = 0; i < km->n; i++) {
+    int index = find_closest_cluster_to(km->data_points[i], km);
+    for ( j = 0; j < km->d; j++) { /* add to the closest cluster */
+      km->clusters[index][j] += km->data_points[i][j];
     }
-    for (i = 0; i < km->n; i++) {
-      int index = find_closest_cluster_to(km->data_points[i], km);
-      for ( j = 0; j < km->d; j++) { /* add to the closest cluster */
-        km->clusters[index][j] += km->data_points[i][j];
-      }
-      km->sizeof_clusters[index]++;
-    }
-    valid = is_converged(km);
-    iteration_num++;
+    km->sizeof_clusters[index]++;
   }
 }
 
@@ -150,23 +143,12 @@ void assign_to_clusters(kmeans* km) {
  * @return nothing
  */
 void update_centroids(kmeans* km) {
-
   int i,j;
-  for (i = 0; i < km->k; i++) {
-    for (j = 0; j < km->d; j++) {
-      km->centroids[i][j] = km->clusters[i][j] / km->sizeof_clusters[j];
+    for (i = 0; i < km->k; i++) {
+      for (j = 0; j < km->d; j++) {
+        km->centroids[i][j] = km->clusters[i][j] / km->sizeof_clusters[j];
+      }
     }
-  }
-  // empty clusters
-  for (i = 0; i < km->k; ++i) {
-    for (j = 0; j < km->d; ++j) {
-      km->clusters[i][j] = 0;
-    }
-  }
-  // empty sizeof_clusters
-  for (j = 0; j < km->k; j++) {
-    km->sizeof_clusters[j] = 0;
-  }
 }
 /**
 * outputs the final centroids to a given file.
@@ -205,6 +187,7 @@ void run(kmeans* km){
       return;
     }
     assign_to_clusters(km);
+    save_old_centroids(km);
     update_centroids(km);
   }
   output_results(km);
@@ -213,8 +196,8 @@ void run(kmeans* km){
 
 /* input validations */
 void invalid_input(){
- printf("Invalid Input!");
- exit(1);
+  printf("Invalid Input!");
+  exit(1);
 }
 void general_error() {
   printf("An Error Has Occurred");
@@ -303,6 +286,9 @@ void initialize_sizeof_clusters(kmeans *km){
 void construct_kmeans(kmeans* km, int k, int max_iter, char* input_file_name, char* output_file_name){
   int *dn, size_prefix1, size_prefix2;
   char *prefix1, *prefix2;
+  km->k = k;
+  km->max_iter = max_iter;
+
   size_prefix1 = strlen(input_file_name);
   size_prefix2 = strlen(output_file_name);
   prefix1 = malloc((size_prefix1 + 4) * sizeof (char));
@@ -314,32 +300,49 @@ void construct_kmeans(kmeans* km, int k, int max_iter, char* input_file_name, ch
   prefix2[0] = '.';
   prefix2[1] = '.';
   prefix2[2] = '/';
-
-  if(((dn = malloc(2 * sizeof (int))) == NULL) || errno != 0) {
-    printf("error in construct_kmeans: cannot allocate memory for dn array.");
+  dn = malloc(2 * sizeof (int));
+  if(dn == NULL){
     general_error();
   }
-  km->k = k;
-  km->max_iter = max_iter;
-  printf("construct_kmeans: the input file name is: |%s|\n", input_file_name);
-  printf("construct_kmeans: the output file name is: |%s|\n", output_file_name);
-  strcat(prefix1, input_file_name);
-  strcat(prefix2, output_file_name);
+
+//  strcat(prefix1, input_file_name);
+//  strcat(prefix2, output_file_name);
   km->input_file_name = prefix1;
   km->output_file_name = prefix2;
+
   dn = calculate_d_n(km, dn);
   km->d = dn[0];
   km->n = dn[1];
-/* memory allocation */
+  /* memory allocation */
   allocate2d(&km->data_points, km->n, km->d);
   allocate2d(&km->centroids, km->k, km->d);
   allocate2d(&km->old_centroids, km->k, km->d);
   allocate2d(&km->clusters, km->k, km->d);
-  allocate2d(&km->data_points, km->n, km->d);
   allocate(&km->sizeof_clusters, km->k);
-//  /* initializations */
+
+/* initializations */
   initialize_data_points(km);
   initialize_centroids(km);
+}
+void empty_clusters(kmeans *km){
+  int i,j;
+  /* empty clusters */
+  for (i = 0; i < km->k; ++i) {
+    for (j = 0; j < km->d; ++j) {
+      km->clusters[i][j] = 0;
+    }
+  }
+  /* empty sizeof_clusters */
+  for (j = 0; j < km->k; j++) {
+    km->sizeof_clusters[j] = 0;
+  }
+}
+void save_old_centroids(kmeans *km) {
+  int i, j;
+  for (i = 0; i < km->k; i++) {
+    for (j = 0; j < km->d; j++)
+      km->old_centroids[i][j] = km->centroids[i][j];
+  }
 }
 /* calculations on vectors */
 int is_converged(kmeans *km){
@@ -349,11 +352,11 @@ int is_converged(kmeans *km){
       return 0;
   return 1;
 }
-double distance_squared(double *v1, double *v2, int n){
+double distance_squared(double *v1, double *v2, int d){
   double dist = 0.0;
   int i;
   /* implement scalr multiplication to calculate the norm of the difference. */
-  for(i = 0; i < n; ++i)
+  for(i = 0; i < d; ++i)
     dist += pow(v1[i] - v2[i], 2);
   return dist;
 }
@@ -385,8 +388,7 @@ int main(int argc, char* argv[]) {
 
   construct_kmeans(km,k, max_iter, argv[argc-2], argv[argc-1]);
   run(km);
-//  freeAll(km); // check if more * is needed because of call by value
+  freeAll(km); /* check if more * is needed because of call by value */
   km = NULL;
   return 0;
 }
-
