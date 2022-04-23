@@ -1,6 +1,13 @@
 import sys
 import math
 
+"""
+@author: mohammad daghash
+@id: 314811290
+@author: ram elgov
+@id: 206867517
+"""
+
 
 def scalar_mult(dp1, dp2):
     """
