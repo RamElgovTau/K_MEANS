@@ -1,196 +1,181 @@
 #include <stdio.h>
-#include<malloc.h>
 #include<math.h>
 #include <stdlib.h>
 #include <string.h>
-int norm(double *centroids, double *oldcentroids, int K, int veclength) {
-    int i = 0;
-    int c = 0;
-    int j = 0;
-    double norm = 0;
-    for (i = 0; i < K; i++) {
-        norm = 0;
-        for (j = 0; j < veclength; j++) {
-            norm += pow(centroids[i * veclength + j] - oldcentroids[i * veclength + j], 2);
-        }
-        norm = pow(norm, 0.5);
-        if (norm < 0.001) {
-            c++;
-        }
+int is_converged(double *centroids, double *old_centroids, int K, int vector_length) {
+  int i, j;
+  double norm;
+  /*
+   * checks if all the centroids didn't change more than the value of epsilon
+   */
+  for (i = 0; i < K; i++) {
+    norm = 0;
+    for (j = 0; j < vector_length; j++) {
+      norm += pow(centroids[i * vector_length + j] - old_centroids[i * vector_length + j], 2);
     }
-    if (c == K) {
-        return 0;
+    norm = pow(norm, 0.5);
+    if (norm >= 0.001) {
+      return 1;
     }
-    return 1;
+  }
+  return 0;
 }
-
-int min(double *x, double *centroids, int K, int veclength) {
-    double min = 0;
-    double sum;
-    int j = 0;
-    int i = 0;
-    int index = 0;
-    for (i = 0; i < veclength; i++) {
-        min += pow(x[i] - centroids[i], 2);
+int indexof_closest_cluster(double *x, double *centroids, int K, int vector_length) {
+  double min = 0;
+  double sum;
+  int i, j, index = 0;
+  for (i = 0; i < vector_length; i++) {
+    min += pow(x[i] - centroids[i], 2);
+  }
+  for (j = 0; j < K; j++) {
+    sum = 0;
+    for (i = 0; i < vector_length; i++) {
+      sum += pow(x[i] - centroids[j * vector_length + i], 2);
     }
-    for (j = 0; j < K; j++) {
-        sum = 0;
-        for (i = 0; i < veclength; i++) {
-            sum += pow(x[i] - centroids[j * veclength + i], 2);
-        }
-        if (sum < min) {
-            min = sum;
-            index = j;
-        }
+    if (sum < min) {
+      min = sum;
+      index = j;
     }
-    return index;
+  }
+  return index;
 }
 
 int main(int argc, char **argv) {
-    FILE *ifp, *ofp;
-    double vec = 0;
-    char c;
-    int filelength = 0;
-    int veclength = 0;
-    int iterationnum = 0;
-    int valid = 1;
-    int i = 0;
-    int j = 0;
-    int maxiter;
-    int K;
-    int digitnum;
-    int counter;
-    double *vectors;
-    double **filearr;
-    double *centroids;
-    double *oldcentroids;
-    double *clusters;
-    int *sizeofclusters;
-    if (argc == 5) {
-        K = atoi(argv[1]);
-        maxiter = atoi(argv[2]);
-        ifp = fopen(argv[3], "r");
-        ofp = fopen(argv[4], "w");
-    } else {
-        K = atoi(argv[1]);
-        maxiter = 200;
-        ifp = fopen(argv[2], "r");
-        ofp = fopen(argv[3], "w");
+  FILE *ifp, *ofp;
+  double vec = 0;
+  char c;
+  int file_length, vector_length, iteration_num;
+  int valid;
+  int i, j;
+  int maxiter, K, digit_num, counter;
+  double *vectors;
+  double **data_points;
+  double *centroids;
+  double *old_centroids;
+  double *clusters;
+  int *sizeof_clusters;
+  if (argc == 5) {
+    K = atoi(argv[1]);
+    maxiter = atoi(argv[2]);
+    ifp = fopen(argv[3], "r");
+    ofp = fopen(argv[4], "w");
+  } else {
+    K = atoi(argv[1]);
+    maxiter = 200;
+    ifp = fopen(argv[2], "r");
+    ofp = fopen(argv[3], "w");
+  }
+  if(K<=1 || maxiter<=0){
+    printf("Invalid Input!");
+    return 1;
+  }
+  while ((c = fgetc(ifp)) != EOF) {
+    if (c == '\n') {
+      file_length++;
+      vector_length++;
     }
-    if(K<=1 || maxiter<=0){
-        printf("Invalid Input!");
-        return 1;
+    if (c == ',') {
+      vector_length++;
     }
-    while ((c = fgetc(ifp)) != EOF) {
-        if (c == '\n') {
-            filelength++;
-            veclength++;
-        }
-        if (c == ',') {
-            veclength++;
-        }
+  }
+  vector_length = vector_length / file_length;
+  if(K>=file_length){
+    printf("Invalid Input!");
+    return 1;
+  }
+  vectors = calloc(vector_length * file_length, sizeof(double));
+  data_points = calloc(file_length, sizeof(double *));
+  centroids = calloc(K * vector_length, sizeof(double));
+  old_centroids = calloc(K * vector_length, sizeof(double));
+  clusters = calloc(K * vector_length, sizeof(double));
+  sizeof_clusters = calloc(K, sizeof(int));
+  rewind(ifp);
+  while (fscanf(ifp, "%lf,", &vec) != EOF) {
+    vectors[i] = vec;
+    i++;
+  }
+  for (i = 0; i < file_length; i++) {
+    data_points[i] = calloc(vector_length, sizeof(double));
+  }
+  for (i = 0; i < file_length; i++) {
+    for (j = 0; j < vector_length; j++) {
+      data_points[i][j] = vectors[i * vector_length + j];
     }
-    veclength = veclength / filelength;
-    if(K>=filelength){
-        printf("Invalid Input!");
-        return 1;
+  }
+  for (i = 0; i < vector_length * K; i++) {
+    centroids[i] = vectors[i];
+  }
+  iteration_num = 0;
+  valid = 1;
+  while (iteration_num < maxiter && valid == 1) {
+    for (i = 0; i < K * vector_length; i++) {
+      old_centroids[i] = centroids[i];
     }
-    vectors = calloc(veclength * filelength, sizeof(double));
-    filearr = calloc(filelength, sizeof(double *));
-    centroids = calloc(K * veclength, sizeof(double));
-    oldcentroids = calloc(K * veclength, sizeof(double));
-    clusters = calloc(K * veclength, sizeof(double));
-    sizeofclusters = calloc(K, sizeof(int));
-    rewind(ifp);
-
-    while (fscanf(ifp, "%lf,", &vec) != EOF) {
-        vectors[i] = vec;
-        i++;
+    for (i = 0; i < file_length; i++) {
+      int index = indexof_closest_cluster(data_points[i], centroids, K, vector_length);
+      for (j = 0; j < vector_length; j++) {
+        clusters[index * vector_length + j] += data_points[i][j];
+      }
+      sizeof_clusters[index]++;
     }
-    for (i = 0; i < filelength; i++) {
-        filearr[i] = calloc(veclength, sizeof(double));
+    for (j = 0; j < K; j++) {
+      for (i = 0; i < vector_length; i++) {
+        centroids[vector_length * j + i] = clusters[vector_length * j + i] / sizeof_clusters[j];
+      }
     }
-    for (i = 0; i < filelength; i++) {
-        for (j = 0; j < veclength; j++) {
-            filearr[i][j] = vectors[i * veclength + j];
-        }
+    for (j = 0; j < K * vector_length; j++) {
+      clusters[j] = 0;
     }
-    for (i = 0; i < veclength * K; i++) {
-        centroids[i] = vectors[i];
+    for (j = 0; j < K; j++) {
+      sizeof_clusters[j] = 0;
     }
-    iterationnum = 0;
-    valid = 1;
-    while (iterationnum < maxiter && valid == 1) {
-        for (i = 0; i < K * veclength; i++) {
-            oldcentroids[i] = centroids[i];
-        }
-        for (i = 0; i < filelength; i++) {
-            int index = min(filearr[i], centroids, K, veclength);
-            for (j = 0; j < veclength; j++) {
-                clusters[index * veclength + j] += filearr[i][j];
-            }
-            sizeofclusters[index]++;
-        }
-        for (j = 0; j < K; j++) {
-            for (i = 0; i < veclength; i++) {
-                centroids[veclength * j + i] = clusters[veclength * j + i] / sizeofclusters[j];
-            }
-        }
-        for (j = 0; j < K * veclength; j++) {
-            clusters[j] = 0;
-        }
-        for (j = 0; j < K; j++) {
-            sizeofclusters[j] = 0;
-        }
-        valid = norm(centroids, oldcentroids, K, veclength);
-        iterationnum++;
+    valid = is_converged(centroids, old_centroids, K, vector_length);
+    iteration_num++;
+  }
+  for (i = 0; i < K; i++) {
+    for (j = 0; j < vector_length; j++) {
+      fprintf(ofp, "%.4f", centroids[i * vector_length + j]);
+      if (j < vector_length - 1) {
+        fprintf(ofp, ",");
+      } else {
+        fprintf(ofp, "\n");
+      }
     }
-    for (i = 0; i < K; i++) {
-        for (j = 0; j < veclength; j++) {
-            fprintf(ofp, "%.4f", centroids[i * veclength + j]);
-            if (j < veclength - 1) {
-                fprintf(ofp, ",");
-            } else {
-                fprintf(ofp, "\n");
-            }
-        }
+  }
+  counter=0 ;
+  digit_num=strlen(argv[1]);
+  for(i=0;i<digit_num;i++){
+    if((((int)(argv[1][i])-48)<=9) && (((int)(argv[1][i])-48)>=0)){
+      counter++;
     }
-    digitnum=0;
-    counter=0 ;
-    digitnum=strlen(argv[1]);
-    for(i=0;i<digitnum;i++){
-        if((((int)(argv[1][i])-48)<=9) && (((int)(argv[1][i])-48)>=0)){
-            counter++;
-        }
+  }
+  if(digit_num!=counter){
+    printf("Invalid Input!");
+    return 1;
+  }
+  counter=0 ;
+  if(argc==5){
+    digit_num=strlen(argv[2]);
+    for(i=0;i<digit_num;i++){
+      if((((int)(argv[2][i])-48)<=9) && (((int)(argv[2][i])-48)>=0)){
+        counter++;
+      }
     }
-    if(digitnum!=counter){
-        printf("Invalid Input!");
-        return 1;
+    if(digit_num!=counter){
+      printf("Invalid Input!");
+      return 1;
     }
-    digitnum=0;
-    counter=0 ;
-    if(argc==5){
-        digitnum=strlen(argv[2]);
-        for(i=0;i<digitnum;i++){
-            if((((int)(argv[2][i])-48)<=9) && (((int)(argv[2][i])-48)>=0)){
-                counter++;
-            }
-        }
-        if(digitnum!=counter){
-            printf("Invalid Input!");
-            return 1;
-        }
-    }
-    free(clusters);
-    free(sizeofclusters);
-    free(centroids);
-    free(oldcentroids);
-    free(vectors);
-    for (i = 0; i < filelength; i++) {
-        free(filearr[i]);
-    }
-    free(filearr);
-    fclose(ifp);
-    fclose(ofp);
-    return 0;
+  }
+  free(clusters);
+  free(sizeof_clusters);
+  free(centroids);
+  free(old_centroids);
+  free(vectors);
+  for (i = 0; i < file_length; i++) {
+    free(data_points[i]);
+  }
+  free(data_points);
+  fclose(ifp);
+  fclose(ofp);
+  return 0;
 }

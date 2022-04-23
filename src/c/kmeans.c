@@ -22,7 +22,7 @@ typedef struct kmeans {
   long n, d, k, max_iter;  /* n is the number of data points, d is the dimension of each vector in the algorithm */
   /* k is the number of required clusters. */
   long* sizeof_clusters; /* array to hold the sizes of all clusters */
-  double **data_points, **centroids, **old_centroids, **clusters;
+  double **filearr, *centroids, *old_centroids, *clusters;
   char* input_file_name, *output_file_name;
 } kmeans;
 
