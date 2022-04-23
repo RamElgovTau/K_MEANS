@@ -1,5 +1,5 @@
 from unittest import TestCase
-from kmeans import KMeans
+from src.python.kmeans import KMeans
 
 
 class TestKMeans(TestCase):
