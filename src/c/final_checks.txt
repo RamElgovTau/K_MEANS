@@ -1,0 +1,13 @@
+1. check there is no memory leak :
+פשוט מקמפלים עם clang במקום gcc עם אותם דגלים, מוסיפים את הדגלים
+-fsanitize=address -g
+ולפני שמריצים את התוכנית מריצים את הפקודה
+setenv ASAN_OPTIONS=detect_leaks=1
+2. add a check for  k > n in python *V*
+3. check for invalid input vs general errors
+4. remove any warnings (// -> /**/)
+5. check final python in nova
+git diff --color-words=. file1 file2
+6. check final c in nova (u
+git diff --color-words=. file1 file2
+7. assign

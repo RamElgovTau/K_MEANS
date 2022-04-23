@@ -7,8 +7,8 @@ class KMeans:
     @authors: Mohammad Daghash & Ram Elgov.
     """
 
-    def __init__(self, K, input_filename, output_filename, max_iter=200, epsilon=0.001):
-        self.K = K  # number of clusters
+    def __init__(self, k, input_filename, output_filename, max_iter=200, epsilon=0.001):
+        self.K = k  # number of clusters
         self.max_iter = max_iter  # maximum number of iteration for the algorithm
         self.input_filename = input_filename  # an input file with valid format of data points (text file)
         self.output_filename = output_filename  # an output file to save the results into (text file)
@@ -53,7 +53,7 @@ class KMeans:
     def find_closest_cluster(self, dp):
         """
         finds the closest cluster to the given datapoint based on the Euclidian norm.
-        :param dp: the input data point
+        :param: dp the input data point
         :return: the index j of the centroid that represent the closest cluster.
         """
         dif = self.subtract_data_points(dp, self.centroids[1])
@@ -179,11 +179,6 @@ def main():
     else:
         print("Invalid Input!")
         sys.exit()
-
-    # K - need to check that it is valid integer
-    # max_iter - # need to check that it is valid integer
-    # input_filename = args[2]  # need to check that it is valid file name that is openable
-    # output_filename = args[3]  # need to check that it is valid file name that is openable
 
 
 if __name__ == "__main__":
