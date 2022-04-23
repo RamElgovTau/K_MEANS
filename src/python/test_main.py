@@ -1,5 +1,5 @@
 from unittest import TestCase
-from kmeans import KMeans
+from src.python.kmeans import KMeans
 
 
 class TestKMeans(TestCase):
@@ -24,9 +24,9 @@ class TestKMeans(TestCase):
         self.fail()
 
     def test_norm(self):
-        self.assertEqual(self.kmeans.norm([0, 0, 0]), 0.0)
-        self.assertEqual(self.kmeans.norm([1, 1, 1]), pow(3, 0.5))
-        self.assertEqual(self.kmeans.norm([0, 3, 4]), 5.0)
+        self.assertEqual(norm([0, 0, 0]), 0.0)
+        self.assertEqual(norm([1, 1, 1]), pow(3, 0.5))
+        self.assertEqual(norm([0, 3, 4]), 5.0)
 
     def test_distance(self):
         self.fail()
