@@ -6,7 +6,7 @@ int is_converged(double *centroids, double *old_centroids, int K, int vector_len
   int i, j;
   double norm;
   /*
-   * checks if all the centroids didn't change more than the value of epsilon
+   * checks if all centroids's norm didn't change more than the value of epsilon. if yes, then it's converged.
    */
   for (i = 0; i < K; i++) {
     norm = 0;
@@ -24,9 +24,11 @@ int indexof_closest_cluster(double *x, double *centroids, int K, int vector_leng
   double min = 0;
   double sum;
   int i, j, index = 0;
+  /* minimum initialisation. (the fis  */
   for (i = 0; i < vector_length; i++) {
     min += pow(x[i] - centroids[i], 2);
   }
+  /* checks for the rest of the centroids. */
   for (j = 0; j < K; j++) {
     sum = 0;
     for (i = 0; i < vector_length; i++) {
@@ -44,9 +46,9 @@ int main(int argc, char **argv) {
   FILE *ifp, *ofp;
   double vec = 0;
   char c;
-  int file_length, vector_length, iteration_num;
+  int file_length = 0, vector_length = 0, iteration_num;
   int valid;
-  int i, j;
+  int i = 0, j;
   int maxiter, K, digit_num, counter;
   double *vectors;
   double **data_points;
